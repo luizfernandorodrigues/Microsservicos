@@ -3,9 +3,26 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31410.357
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "services", "services", "{77EAA4F5-04F7-4882-8E42-BC272498013E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Autenticacao.API", "src\services\Autenticacao.API\Autenticacao.API.csproj", "{A9E3BAE4-289E-4CED-B93D-1F12BB049C97}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A9E3BAE4-289E-4CED-B93D-1F12BB049C97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9E3BAE4-289E-4CED-B93D-1F12BB049C97}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9E3BAE4-289E-4CED-B93D-1F12BB049C97}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9E3BAE4-289E-4CED-B93D-1F12BB049C97}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A9E3BAE4-289E-4CED-B93D-1F12BB049C97} = {77EAA4F5-04F7-4882-8E42-BC272498013E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7A6C10BE-36F4-447A-9A98-42A25C3F1001}
