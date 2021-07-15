@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="AtualizacaoBanco\ScriptsGerenciados\0001_1000\Script_0001_CriarTabelaScriptGerenciado.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="AtualizacaoBanco\ScriptsGerenciados\0001_1000\Script_0001_CriarTabelaScriptGerenciado.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="AtualizacaoBanco\ScriptsObjetosBD\Funcoes\" />
+    <Folder Include="AtualizacaoBanco\ScriptsObjetosBD\Procedures\" />
+    <Folder Include="Controllers\" />
+    <Folder Include="Configuracao\" />
+    <Folder Include="Data\Repositorios\Implementacoes\" />
+    <Folder Include="Modelos\" />
+    <Folder Include="Servicos\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="161.46367.54" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
+  </ItemGroup>
+
+
+</Project>

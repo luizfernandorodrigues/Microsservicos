@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!--Autor     : Luiz Fernando
+    Data      : 14/07/2021
+    Descrição : Script que cria tabela [Sistema].[ScriptGerenciado]
+-->
+<atualizacao xmlns="atualizacao">
+    <versao numero="0001" guid="39DA1888-F99C-479B-8519-54B6ED63407D"/>
+    <script>
+    <![CDATA[
+    CREATE TABLE [Sistema].[ScriptGerenciado]
+    (
+	    [Id] [bigint] IDENTITY(1,1) NOT NULL,
+	    [Guid] [varchar](40) NOT NULL,
+	    [TimesTamp] [datetime2](7) NOT NULL,
+	    [VersaoAssembly] [varchar](100) NOT NULL,
+    
+        CONSTRAINT [PK_ScriptGerenciado] PRIMARY KEY
+     )
+     GO
+       
+     ALTER TABLE [Sistema].[ScriptGerenciado] ADD CONSTRAINT [UQ_ScriptGerenciado_Guid] UNIQUE ([Guid]);   
+    ]]>
+    </script>
+</atualizacao>
