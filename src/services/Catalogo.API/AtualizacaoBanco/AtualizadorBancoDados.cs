@@ -1,9 +1,7 @@
 ﻿using Catalogo.API.Data.Repositorios.Interfaces;
-using Microsoft.SqlServer.Management.Common;
-using Microsoft.SqlServer.Management.Smo;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -11,61 +9,64 @@ using System.Xml.Serialization;
 
 namespace Catalogo.API.AtualizacaoBanco
 {
-    public class AtualizadorBancoDados
+    public class AtualizadorBancoDados : IAtualizadorBancoDados
     {
-        private string _stringConexao;
-        private SqlConnectionStringBuilder _sqlConnectionStringBuilder;
-        private Action<string> _log;
         private readonly IRepositorioAtualizacao _repositorioAtualizacao;
+        private readonly ILogger<AtualizadorBancoDados> _logger;
 
-        public AtualizadorBancoDados(IRepositorioAtualizacao repositorioAtualizacao)
+        public AtualizadorBancoDados(IRepositorioAtualizacao repositorioAtualizacao, ILogger<AtualizadorBancoDados> logger)
         {
             _repositorioAtualizacao = repositorioAtualizacao;
-
-            _sqlConnectionStringBuilder = new SqlConnectionStringBuilder(_repositorioAtualizacao.ObterStringConexao());
-
-            MontaStringConexao();
+            _logger = logger;
         }
 
-        public void VerificaAtualizacoes(Action<string> log)
+        public void VerificaAtualizacao()
         {
-            _log = log;
+            _logger.LogInformation("Verificando Atualizações.");
 
-            var existeBase = ExisteBaseDados();
-
-            if (!existeBase)
-                CriarBaseDados();
-
-            VerificaAtualizacao();
-        }
-
-        private void VerificaAtualizacao()
-        {
-            IEnumerable<ModeloAtualizacao> modeloAtualizacoes = null;
             try
             {
-                _log("Verificando Atualizações");
+                if (!ExisteBaseDados())
+                    CriarBaseDados();
 
-                _repositorioAtualizacao.AbrirConexaoComTransacao();
+                _logger.LogInformation("Base de dados verificada com sucesso.");
 
-                CarregarObjetos(out modeloAtualizacoes);
+                _logger.LogInformation("Carregando scripts gerenciados.");
+
+                CarregarScriptsGerenciado(out IEnumerable<ModeloAtualizacao> modeloAtualizacoes);
 
                 ValidaGuid(modeloAtualizacoes);
 
+                _repositorioAtualizacao.AbrirConexaoComTransacao();
+
                 ExecutaScriptGerenciado(modeloAtualizacoes);
 
-                _repositorioAtualizacao.Transacao.Commit();
+                _repositorioAtualizacao.Commit();
+
+                _logger.LogInformation("Atualizaçao da base de dados realizada com sucesso.");
             }
             catch (Exception ex)
             {
                 _repositorioAtualizacao.Rollback();
 
-                _log($"Ocorreu um erro ao verificar atualizações. {ex.Message}");
+                _logger.LogError($"Ocorreu um erro na atualização da base de dados: {ex.Message}");
             }
             finally
             {
                 _repositorioAtualizacao.FecharConexao();
             }
+        }
+
+        private bool ExisteBaseDados()
+        {
+            _logger.LogInformation("Verificando base de dados.");
+
+            return _repositorioAtualizacao.VerificaBaseDados();
+        }
+
+        private void CriarBaseDados()
+        {
+            _repositorioAtualizacao.CriaBaseDados();
         }
 
         private void ExecutaScriptGerenciado(IEnumerable<ModeloAtualizacao> listaScriptGerenciados)
@@ -78,7 +79,7 @@ namespace Catalogo.API.AtualizacaoBanco
                 {
                     if (_repositorioAtualizacao.VerificaGuid(item.Versao.Guid) == null)
                     {
-                        _log($"Executando script Guid: {item.Versao.Guid}");
+                        _logger.LogInformation($"Executando script guid: {item.Versao.Guid}");
 
                         _repositorioAtualizacao.ExecutaScript(script.Sql);
 
@@ -86,6 +87,8 @@ namespace Catalogo.API.AtualizacaoBanco
                     }
                 }
             }
+
+            _logger.LogInformation("Persistindo scripts.");
 
             if (guids.Count > 0)
                 ExecutaPersistenciaGuid(guids);
@@ -97,7 +100,7 @@ namespace Catalogo.API.AtualizacaoBanco
                 _repositorioAtualizacao.ArmazenaGuidExecutado(guid);
         }
 
-        private void CarregarObjetos(out IEnumerable<ModeloAtualizacao> modeloAtualizacoes)
+        private void CarregarScriptsGerenciado(out IEnumerable<ModeloAtualizacao> modeloAtualizacoes)
         {
             try
             {
@@ -113,7 +116,7 @@ namespace Catalogo.API.AtualizacaoBanco
 
                 listaModeloAtualizacoes = new List<ModeloAtualizacao>() { Capacity = quantidadeScriptGerenciado };
 
-                var caminhoScripts = "SERMUSA.AtualizacaoBancoDados.Fontes.Scripts";
+                var caminhoScripts = "Catalogo.API.AtualizacaoBanco.ScriptsGerenciados";
 
                 foreach (var resource in resources)
                 {
@@ -127,7 +130,7 @@ namespace Catalogo.API.AtualizacaoBanco
             {
                 modeloAtualizacoes = null;
 
-                _log($"Ocorreu um erro para carregar os objetos. {ex.Message}");
+                _logger.LogError($"Ocorreu um erro para carregar scripts gerenciados: {ex.Message}");
             }
         }
 
@@ -161,102 +164,6 @@ namespace Catalogo.API.AtualizacaoBanco
                 if (streamAtualizacao != null)
                     streamAtualizacao.Close();
             }
-        }
-
-        private void MontaStringConexao()
-        {
-            _stringConexao = $"Data Source = {_sqlConnectionStringBuilder.DataSource}; Initial Catalog = {_sqlConnectionStringBuilder.InitialCatalog}; Persist Security Info = True; User ID = {_sqlConnectionStringBuilder.UserID}; Password = {_sqlConnectionStringBuilder.Password};";
-        }
-
-        private void CriarBaseDados()
-        {
-            var nomeBanco = _sqlConnectionStringBuilder.InitialCatalog;
-
-            _sqlConnectionStringBuilder.InitialCatalog = "master";
-
-            MontaStringConexao();
-
-            using var conexao = new SqlConnection(_stringConexao);
-
-            try
-            {
-                conexao.Open();
-
-                var comando = conexao.CreateCommand();
-
-                comando.CommandTimeout = int.MaxValue;
-
-                //cria a base
-
-                _sqlConnectionStringBuilder.InitialCatalog = nomeBanco;
-
-                _log("Criando banco de dados");
-
-                comando.CommandText = $"CREATE DATABASE {_sqlConnectionStringBuilder.InitialCatalog}";
-                comando.ExecuteNonQuery();
-
-                comando.CommandText = $"USE {_sqlConnectionStringBuilder.InitialCatalog}";
-                comando.ExecuteNonQuery();
-
-                comando.CommandText = $"CREATE SCHEMA[Cadastro]";
-                comando.ExecuteNonQuery();
-
-                comando.CommandText = $"CREATE SCHEMA[Configuracao]";
-                comando.ExecuteNonQuery();
-
-                _log("Banco de dados configurado com sucesso!");
-            }
-            catch (Exception ex)
-            {
-                _log($"Ocorreu um erro ao criar banco de dados.\n{ex.Message}");
-            }
-            finally
-            {
-                conexao.Close();
-            }
-        }
-
-        private bool ExisteBaseDados()
-        {
-            _log("Verificando banco de dados");
-
-            var bancoDados = string.Empty;
-
-            if (!string.IsNullOrEmpty(_stringConexao))
-            {
-                var stringConexaoBuilder = new SqlConnectionStringBuilder(_stringConexao);
-
-                if (!string.IsNullOrEmpty(stringConexaoBuilder.InitialCatalog))
-                    bancoDados = stringConexaoBuilder.InitialCatalog;
-
-                try
-                {
-                    ServerConnection conexaoServidor;
-
-                    if (stringConexaoBuilder.IntegratedSecurity)
-                        conexaoServidor = new ServerConnection(stringConexaoBuilder.DataSource);
-                    else
-                        conexaoServidor = new ServerConnection(stringConexaoBuilder.DataSource, stringConexaoBuilder.UserID, stringConexaoBuilder.Password);
-
-                    var servidor = new Server(conexaoServidor);
-
-                    if (servidor == null)
-                        return false;
-
-                    if (servidor.Databases[bancoDados] == null)
-                        return false;
-
-                    _log("Bando de dados verificado com sucesso!");
-
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    throw ex;
-                }
-            }
-
-            return false;
         }
     }
 }

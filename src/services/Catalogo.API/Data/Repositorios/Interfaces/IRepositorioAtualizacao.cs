@@ -5,5 +5,7 @@
         object VerificaGuid(string guid);
         void ExecutaScript(string sql);
         void ArmazenaGuidExecutado(string guid);
+        bool VerificaBaseDados();
+        void CriaBaseDados();
     }
 }
